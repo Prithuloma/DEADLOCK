@@ -13,6 +13,11 @@ class DeadlockDashboard {
         this.selectedProcessPid = null;
         this.selectedProcessName = null;
         
+        // WebSocket retry configuration
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 10;
+        this.reconnectDelay = 5000;
+        
         // 🚀 AUTO-RESOLUTION FEATURES
         this.autoResolutionEnabled = true;
         this.resolutionHistory = [];
@@ -22,10 +27,76 @@ class DeadlockDashboard {
         console.log('🚀 Dashboard initialized with auto-resolution support');
     }
 
-    initialize() {
+    // Utility method for safe DOM element access
+    safeGetElement(id) {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.warn(`⚠️ Element not found: ${id}`);
+        }
+        return element;
+    }
+
+    // Utility method for safe element text update
+    safeUpdateText(id, text) {
+        const element = this.safeGetElement(id);
+        if (element) {
+            element.textContent = text;
+        }
+    }
+
+    // Utility method for fetch with timeout and error handling
+    async fetchWithTimeout(url, options = {}, timeout = 10000) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+            }
+            
+            return response;
+        } catch (error) {
+            clearTimeout(id);
+            if (error.name === 'AbortError') {
+                throw new Error(`Request timeout (${timeout}ms) for ${url}`);
+            }
+            throw error;
+        }
+    }
+
+    // Health check method
+    async checkBackendHealth() {
+        try {
+            const response = await this.fetchWithTimeout('/api/health', {}, 5000);
+            const health = await response.json();
+            console.log('✅ Backend is healthy:', health);
+            return true;
+        } catch (error) {
+            console.error('❌ Backend health check failed:', error);
+            this.showNotification('Backend server is not responding', 'error');
+            return false;
+        }
+    }
+
+    async initialize() {
         console.log('🔧 Starting dashboard initialization...');
+        
+        // Check backend health first
+        const isHealthy = await this.checkBackendHealth();
+        if (!isHealthy) {
+            console.error('❌ Backend unhealthy, skipping initialization');
+            return;
+        }
+        
         this.initializeGraph();
         this.setupEventListeners();
+        this.initializeCharts();
         this.connectWebSocket();
         this.loadInitialData();
         console.log('✅ Dashboard initialization complete');
@@ -119,6 +190,57 @@ class DeadlockDashboard {
         console.log('✅ Graph initialized successfully');
     }
 
+    initializeCharts() {
+        console.log('📊 Initializing charts...');
+        
+        // Initialize resolution time chart if container exists
+        const chartContainer = this.safeGetElement('resolutionChart');
+        if (chartContainer && typeof Chart !== 'undefined') {
+            this.resolutionChart = new Chart(chartContainer, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Resolution Time (ms)',
+                        data: [],
+                        borderColor: '#4F46E5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Time (ms)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('✅ Resolution chart initialized');
+        } else {
+            console.log('⚠️ Chart.js not available or container not found');
+        }
+    }
+
     setupEventListeners() {
         console.log('🎧 Setting up event listeners...');
         
@@ -187,6 +309,26 @@ class DeadlockDashboard {
         console.log('✅ Event listeners configured (including auto-resolution)');
     }
 
+    // Method to update resolution time chart
+    updateResolutionChart(resolutionTime) {
+        if (this.resolutionChart) {
+            const now = new Date().toLocaleTimeString();
+            
+            // Add new data point
+            this.resolutionChart.data.labels.push(now);
+            this.resolutionChart.data.datasets[0].data.push(resolutionTime);
+            
+            // Keep only last 20 data points
+            if (this.resolutionChart.data.labels.length > 20) {
+                this.resolutionChart.data.labels.shift();
+                this.resolutionChart.data.datasets[0].data.shift();
+            }
+            
+            this.resolutionChart.update('none'); // Update without animation for performance
+            console.log(`📊 Chart updated with resolution time: ${resolutionTime}ms`);
+        }
+    }
+
     connectWebSocket() {
         console.log('🔌 Connecting to WebSocket...');
         
@@ -196,6 +338,7 @@ class DeadlockDashboard {
         this.stompClient.connect({}, (frame) => {
             console.log('✅ WebSocket connected:', frame);
             this.isConnected = true;
+            this.reconnectAttempts = 0; // Reset on successful connection
             this.updateConnectionStatus(true);
             
             // Subscribe to deadlock updates
@@ -226,11 +369,17 @@ class DeadlockDashboard {
             this.isConnected = false;
             this.updateConnectionStatus(false);
             
-            // Retry connection
-            setTimeout(() => {
-                console.log('🔄 Retrying WebSocket connection...');
-                this.connectWebSocket();
-            }, 5000);
+            // Retry connection with limit
+            if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                this.reconnectAttempts++;
+                setTimeout(() => {
+                    console.log(`🔄 Retrying WebSocket connection (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+                    this.connectWebSocket();
+                }, this.reconnectDelay);
+            } else {
+                console.error('❌ Max reconnection attempts reached');
+                this.showNotification('⚠️ Unable to connect to server. Please refresh the page.', 'error');
+            }
         });
     }
 
@@ -238,7 +387,7 @@ class DeadlockDashboard {
         console.log('📡 Loading initial data from API...');
         
         try {
-            const response = await fetch('/api/state');
+            const response = await this.fetchWithTimeout('/api/state');
             const data = await response.json();
             console.log('✅ Initial data loaded:', data);
             this.handleDeadlockUpdate(data);
@@ -249,7 +398,7 @@ class DeadlockDashboard {
             this.updateAutoResolutionButton();
         } catch (error) {
             console.error('❌ Failed to load initial data:', error);
-            this.updateSystemStatus('error', 'Failed to load initial data');
+            this.showNotification(`Failed to load initial data: ${error.message}`, 'error');
         }
     }
 
@@ -290,18 +439,18 @@ class DeadlockDashboard {
         
         // Total Threads
         const totalThreads = data.threads ? data.threads.length : 0;
-        document.getElementById('total-threads').textContent = totalThreads;
+        this.safeUpdateText('total-threads', totalThreads);
         console.log(`  ├─ Total Threads: ${totalThreads}`);
         
         // Active Locks
         const activeLocks = data.locks ? data.locks.length : 0;
-        document.getElementById('active-locks').textContent = activeLocks;
+        this.safeUpdateText('active-locks', activeLocks);
         console.log(`  ├─ Active Locks: ${activeLocks}`);
         
         // Deadlocked Threads
         const deadlockedThreads = data.threads ? 
             data.threads.filter(t => t.deadlocked === true).length : 0;
-        document.getElementById('deadlocked-threads').textContent = deadlockedThreads;
+        this.safeUpdateText('deadlocked-threads', deadlockedThreads);
         console.log(`  ├─ Deadlocked Threads: ${deadlockedThreads}`);
         
         // Blocked Threads
@@ -501,8 +650,8 @@ class DeadlockDashboard {
         
         console.log(`✅ Process panel updated: PID ${pid}, Name: ${displayName}`);
         
-        // Notify backend
-        fetch(`/api/monitor/${pid}`, { method: 'POST' })
+        // Notify backend with proper error handling
+        this.fetchWithTimeout(`/api/monitor/${pid}`, { method: 'POST' })
             .then(response => response.text())
             .then(message => {
                 console.log('✅ Backend acknowledged selection:', message);
@@ -511,6 +660,7 @@ class DeadlockDashboard {
             })
             .catch(error => {
                 console.error('❌ Failed to notify backend:', error);
+                this.showNotification(`Failed to select process: ${error.message}`, 'error');
             });
     }
 
@@ -682,6 +832,11 @@ class DeadlockDashboard {
         // Update auto-resolution status badge
         this.updateAutoResolutionBadge();
         
+        // Update chart if resolution time is available
+        if (update.resolutionTime && update.resolutionTime > 0) {
+            this.updateResolutionChart(update.resolutionTime);
+        }
+        
         // Show notification based on update type
         const status = update.status || 'RESOLVING';
         const message = update.message || 'Auto-resolution triggered';
@@ -734,14 +889,10 @@ class DeadlockDashboard {
         try {
             console.log('🔄 Toggling auto-resolution...');
             
-            const response = await fetch('/api/resolution/toggle', {
+            const response = await this.fetchWithTimeout('/api/resolution/toggle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
             
             const result = await response.json();
             this.autoResolutionEnabled = result.autoResolutionEnabled;
@@ -774,14 +925,10 @@ class DeadlockDashboard {
         try {
             console.log('⚡ Triggering manual resolution...');
             
-            const response = await fetch('/api/resolution/trigger', {
+            const response = await this.fetchWithTimeout('/api/resolution/trigger', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
             
             const result = await response.json();
             
@@ -987,21 +1134,18 @@ class DeadlockDashboard {
     async loadResolutionData() {
         try {
             // Fetch statistics
-            const statsResponse = await fetch('/api/resolution/stats');
-            if (statsResponse.ok) {
-                const stats = await statsResponse.json();
-                this.updateResolutionStats(stats);
-            }
+            const statsResponse = await this.fetchWithTimeout('/api/resolution/stats');
+            const stats = await statsResponse.json();
+            this.updateResolutionStats(stats);
             
             // Fetch history
-            const historyResponse = await fetch('/api/resolution/history');
-            if (historyResponse.ok) {
-                const history = await historyResponse.json();
-                this.updateResolutionHistory(history);
-            }
+            const historyResponse = await this.fetchWithTimeout('/api/resolution/history');
+            const history = await historyResponse.json();
+            this.updateResolutionHistory(history);
             
         } catch (error) {
             console.error('❌ Failed to load resolution data:', error);
+            this.showNotification(`Failed to load resolution data: ${error.message}`, 'error');
         }
     }
     
@@ -1091,23 +1235,32 @@ class DeadlockDashboard {
         }
     }
 
+    // Utility method for escaping HTML to prevent XSS
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     addActivityEvent(type, title, message) {
-        const timeline = document.getElementById('activity-timeline');
+        const timeline = this.safeGetElement('activity-timeline');
         if (!timeline) return;
         
         const event = document.createElement('div');
         event.className = `timeline-event ${type}`;
         event.innerHTML = `
             <div class="event-time">${new Date().toLocaleTimeString()}</div>
-            <div class="event-title">${title}</div>
-            <div class="event-message">${message}</div>
+            <div class="event-title">${this.escapeHtml(title)}</div>
+            <div class="event-message">${this.escapeHtml(message)}</div>
         `;
         
         timeline.insertBefore(event, timeline.firstChild);
         
-        // Keep only last 10 events
+        // Keep only last 10 events and clean up old ones
         while (timeline.children.length > 10) {
-            timeline.removeChild(timeline.lastChild);
+            const removed = timeline.removeChild(timeline.lastChild);
+            // Clean up any event listeners if attached
+            removed.replaceWith(removed.cloneNode(true));
         }
     }
 }
