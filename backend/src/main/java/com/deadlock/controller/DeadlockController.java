@@ -1,88 +1,21 @@
 package com.deadlock.controller;
 
-import java.util.Map;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.deadlock.model.DeadlockSnapshot;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import com.deadlock.service.DeadlockService;
 
-/**
- * REST API controller for deadlock detection and management
- */
 @RestController
-@RequestMapping("/api")
-@CrossOrigin(origins = "*") // Allow cross-origin requests for development
 public class DeadlockController {
 
-    private final DeadlockService deadlockService;
+    @Autowired
+    private DeadlockService deadlockService;
 
-    public DeadlockController(DeadlockService deadlockService) {
-        this.deadlockService = deadlockService;
-    }
-
-    /**
-     * GET /api/state - Returns current deadlock state
-     */
-    @GetMapping("/state")
-    public ResponseEntity<DeadlockSnapshot> getCurrentState() {
-        try {
-            DeadlockSnapshot snapshot = deadlockService.detectDeadlocks();
-            return ResponseEntity.ok(snapshot);
-        } catch (Exception e) {
-            System.err.println("❌ Error getting deadlock state: " + e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * GET /api/system - Returns system information
-     */
-    @GetMapping("/system")
-    public ResponseEntity<Map<String, Object>> getSystemInfo() {
-        try {
-            Map<String, Object> systemInfo = deadlockService.getSystemInfo();
-            return ResponseEntity.ok(systemInfo);
-        } catch (Exception e) {
-            System.err.println("❌ Error getting system info: " + e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * POST /api/interrupt/{threadId} - Attempts to interrupt a specific thread
-     */
-    @PostMapping("/interrupt/{threadId}")
-    public ResponseEntity<Map<String, Object>> interruptThread(@PathVariable long threadId) {
-        try {
-            Map<String, Object> result = deadlockService.interruptThread(threadId);
-            
-            if ((Boolean) result.get("success")) {
-                return ResponseEntity.ok(result);
-            } else {
-                return ResponseEntity.badRequest().body(result);
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Error interrupting thread: " + e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * GET /api/status - Service status check endpoint
-     */
-    @GetMapping("/status")
-    public ResponseEntity<Map<String, String>> healthCheck() {
-        return ResponseEntity.ok(Map.of(
-            "status", "UP",
-            "service", "Deadlock Detection Tool",
-            "timestamp", String.valueOf(System.currentTimeMillis())
-        ));
+    @GetMapping("/api/run-deadlock")
+    public ResponseEntity<String> runDeadlock() {
+        String response = deadlockService.createSampleDeadlock();
+        return ResponseEntity.ok(response);
     }
 }
+
