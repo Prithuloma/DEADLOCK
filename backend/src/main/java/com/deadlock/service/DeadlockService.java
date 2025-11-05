@@ -64,6 +64,34 @@ public class DeadlockService {
             this.details = details;
             this.resolutionTime = time;
         }
+        public String createSampleDeadlock() {
+            Object lock1 = new Object();
+            Object lock2 = new Object();
+
+            Thread t1 = new Thread(() -> {
+                synchronized (lock1) {
+                    try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+                    synchronized (lock2) {
+                        System.out.println("Thread 1 acquired both locks");
+                    }
+                }
+            }, "Deadlock-T1");
+
+            Thread t2 = new Thread(() -> {
+                synchronized (lock2) {
+                    try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+                    synchronized (lock1) {
+                        System.out.println("Thread 2 acquired both locks");
+                    }
+                }
+            }, "Deadlock-T2");
+
+            t1.start();
+            t2.start();
+
+            return "Deadlock simulation started (check logs)";
+        }
+
     }
     
     /**
@@ -1087,4 +1115,29 @@ public class DeadlockService {
         long resolved = deadlockEvents.stream().mapToLong(e -> e.wasResolved ? 1 : 0).sum();
         return (double) resolved / deadlockEvents.size() * 100.0;
     }
+    public String createSampleDeadlock() {
+        Thread t1 = new Thread(() -> {
+            synchronized ("A") {
+                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+                synchronized ("B") {
+                    System.out.println("Thread 1 acquired locks A and B");
+                }
+            }
+        });
+
+        Thread t2 = new Thread(() -> {
+            synchronized ("B") {
+                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+                synchronized ("A") {
+                    System.out.println("Thread 2 acquired locks B and A");
+                }
+            }
+        });
+
+        t1.start();
+        t2.start();
+
+        return "Deadlock simulation started (check logs)";
+    }
+
 }
