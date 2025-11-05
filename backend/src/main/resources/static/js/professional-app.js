@@ -105,8 +105,16 @@ class DeadlockDashboard {
     initializeGraph() {
         console.log('📊 Initializing Cytoscape graph...');
         
-        this.cy = cytoscape({
-            container: document.getElementById('cy'),
+        try {
+            const container = document.getElementById('cy');
+            if (!container) {
+                console.error('❌ Graph container not found');
+                this.showNotification('Graph container not found', 'error');
+                return;
+            }
+        
+            this.cy = cytoscape({
+                container: container,
             
             style: [
                 {
@@ -188,125 +196,147 @@ class DeadlockDashboard {
         });
         
         console.log('✅ Graph initialized successfully');
+        } catch (error) {
+            console.error('❌ Failed to initialize graph:', error);
+            this.showNotification('Failed to initialize graph visualization', 'error');
+        }
     }
 
     initializeCharts() {
         console.log('📊 Initializing charts...');
         
-        // Initialize resolution time chart if container exists
-        const chartContainer = this.safeGetElement('resolutionChart');
-        if (chartContainer && typeof Chart !== 'undefined') {
-            this.resolutionChart = new Chart(chartContainer, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Resolution Time (ms)',
-                        data: [],
-                        borderColor: '#4F46E5',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        }
+        try {
+            // Initialize resolution time chart if container exists
+            const chartContainer = this.safeGetElement('resolutionChart');
+            if (chartContainer && typeof Chart !== 'undefined') {
+                this.resolutionChart = new Chart(chartContainer, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Resolution Time (ms)',
+                            data: [],
+                            borderColor: '#4F46E5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
                                 display: true,
-                                text: 'Time (ms)'
+                                position: 'top'
                             }
                         },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Time'
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Time (ms)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
                             }
                         }
                     }
-                }
-            });
-            console.log('✅ Resolution chart initialized');
-        } else {
-            console.log('⚠️ Chart.js not available or container not found');
+                });
+                console.log('✅ Resolution chart initialized');
+            } else {
+                console.log('⚠️ Chart.js not available or container not found');
+            }
+        } catch (error) {
+            console.error('❌ Failed to initialize charts:', error);
+            this.showNotification('Failed to initialize charts', 'error');
         }
     }
 
     setupEventListeners() {
         console.log('🎧 Setting up event listeners...');
         
-        // Refresh button
-        const refreshBtn = document.getElementById('refresh-btn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
-                console.log('🔄 Manual refresh requested');
-                this.loadInitialData();
-            });
+        try {
+            // Refresh button
+            const refreshBtn = document.getElementById('refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    console.log('🔄 Manual refresh requested');
+                    this.loadInitialData();
+                });
+            }
+            
+            // Process selector
+            const processSelect = document.getElementById('process-select');
+            if (processSelect) {
+                processSelect.addEventListener('change', (e) => {
+                    const pid = e.target.value;
+                    const displayName = e.target.options[e.target.selectedIndex].text;
+                    
+                    if (pid) {
+                        this.selectProcess(pid, displayName);
+                    }
+                });
+            }
+            
+            // Snapshot button
+            const snapshotBtn = document.getElementById('snapshot-btn');
+            if (snapshotBtn) {
+                snapshotBtn.addEventListener('click', () => {
+                    this.captureSnapshot();
+                });
+            }
+            
+            // Comparison button
+            const comparisonBtn = document.getElementById('comparison-btn');
+            if (comparisonBtn) {
+                comparisonBtn.addEventListener('click', () => {
+                    this.showBeforeAfterComparison();
+                });
+            }
+            
+            // Export Report button
+            const exportBtn = document.getElementById('export-btn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                    this.exportReport();
+                });
+            }
+            
+            // 🚀 AUTO-RESOLUTION: Toggle button
+            const autoResBtn = document.getElementById('auto-res-toggle');
+            if (autoResBtn) {
+                autoResBtn.addEventListener('click', () => {
+                    this.toggleAutoResolution();
+                });
+            }
+            
+            // 🚀 AUTO-RESOLUTION: Manual trigger button
+            const manualResBtn = document.getElementById('manual-res-trigger');
+            if (manualResBtn) {
+                manualResBtn.addEventListener('click', () => {
+                    this.triggerManualResolution();
+                });
+            }
+            
+            // 🚀 AUTO-RESOLUTION: Stats panel button
+            const resStatsBtn = document.getElementById('res-stats-btn');
+            if (resStatsBtn) {
+                resStatsBtn.addEventListener('click', () => {
+                    this.toggleResolutionPanel();
+                });
+            }
+            
+            console.log('✅ Event listeners configured (including auto-resolution)');
+        } catch (error) {
+            console.error('❌ Failed to setup event listeners:', error);
+            this.showNotification('Failed to setup user interface', 'error');
         }
-        
-        // Process selector
-        const processSelect = document.getElementById('process-select');
-        if (processSelect) {
-            processSelect.addEventListener('change', (e) => {
-                const pid = e.target.value;
-                const displayName = e.target.options[e.target.selectedIndex].text;
-                
-                if (pid) {
-                    this.selectProcess(pid, displayName);
-                }
-            });
-        }
-        
-        // Snapshot button
-        const snapshotBtn = document.getElementById('snapshot-btn');
-        if (snapshotBtn) {
-            snapshotBtn.addEventListener('click', () => {
-                this.captureSnapshot();
-            });
-        }
-        
-        // Comparison button
-        const comparisonBtn = document.getElementById('comparison-btn');
-        if (comparisonBtn) {
-            comparisonBtn.addEventListener('click', () => {
-                this.showBeforeAfterComparison();
-            });
-        }
-        
-        // 🚀 AUTO-RESOLUTION: Toggle button
-        const autoResBtn = document.getElementById('auto-res-toggle');
-        if (autoResBtn) {
-            autoResBtn.addEventListener('click', () => {
-                this.toggleAutoResolution();
-            });
-        }
-        
-        // 🚀 AUTO-RESOLUTION: Manual trigger button
-        const manualResBtn = document.getElementById('manual-res-trigger');
-        if (manualResBtn) {
-            manualResBtn.addEventListener('click', () => {
-                this.triggerManualResolution();
-            });
-        }
-        
-        // 🚀 AUTO-RESOLUTION: Stats panel button
-        const resStatsBtn = document.getElementById('res-stats-btn');
-        if (resStatsBtn) {
-            resStatsBtn.addEventListener('click', () => {
-                this.toggleResolutionPanel();
-            });
-        }
-        
-        console.log('✅ Event listeners configured (including auto-resolution)');
     }
 
     // Method to update resolution time chart
@@ -417,7 +447,7 @@ class DeadlockDashboard {
             console.log('🔴 DEADLOCK DETECTED!');
             this.updateSystemStatus('error', '⚠️ Deadlock Detected');
             const deadlockedCount = data.threads && data.threads.filter ? 
-                data.threads.filter(t => t.deadlocked).length : 0;
+                data.threads.filter(t => t.isDeadlocked).length : 0;
             this.addActivityEvent('error', 'Deadlock Detected', 
                 `Found ${deadlockedCount} deadlocked threads`);
         } else {
@@ -449,7 +479,7 @@ class DeadlockDashboard {
         
         // Deadlocked Threads
         const deadlockedThreads = data.threads ? 
-            data.threads.filter(t => t.deadlocked === true).length : 0;
+            data.threads.filter(t => t.isDeadlocked === true).length : 0;
         this.safeUpdateText('deadlocked-threads', deadlockedThreads);
         console.log(`  ├─ Deadlocked Threads: ${deadlockedThreads}`);
         
@@ -487,7 +517,7 @@ class DeadlockDashboard {
             console.log(`  📌 Adding ${data.threads.length} thread nodes...`);
             
             data.threads.forEach(thread => {
-                const isDeadlocked = thread.deadlocked === true;
+                const isDeadlocked = thread.isDeadlocked === true;
                 
                 elements.push({
                     group: 'nodes',
@@ -664,7 +694,7 @@ class DeadlockDashboard {
             });
     }
 
-    captureSnapshot() {
+    async captureSnapshot() {
         if (!this.currentSnapshot) {
             alert('⚠️ No data available to capture');
             return;
@@ -672,27 +702,206 @@ class DeadlockDashboard {
         
         console.log('📸 Capturing snapshot...');
         
+        // Fetch resolution data from backend
+        let resolutionStats = null;
+        let resolutionHistory = null;
+        try {
+            const statsResponse = await this.fetchWithTimeout('/api/resolution/stats');
+            resolutionStats = await statsResponse.json();
+            
+            const historyResponse = await this.fetchWithTimeout('/api/resolution/history');
+            resolutionHistory = await historyResponse.json();
+        } catch (error) {
+            console.warn('Could not fetch resolution data:', error);
+        }
+        
         const snapshot = {
             timestamp: new Date().toISOString(),
+            captureTime: new Date().toLocaleString(),
             processName: this.selectedProcessName || 'Unknown',
             processPid: this.selectedProcessPid || 'Unknown',
-            ...this.currentSnapshot
+            deadlockState: {
+                detected: this.currentSnapshot.deadlockDetected,
+                threadCount: this.currentSnapshot.threads ? this.currentSnapshot.threads.length : 0,
+                lockCount: this.currentSnapshot.locks ? this.currentSnapshot.locks.length : 0,
+                deadlockedThreads: this.currentSnapshot.threads ? 
+                    this.currentSnapshot.threads.filter(t => t.isDeadlocked).length : 0
+            },
+            resolution: {
+                stats: resolutionStats,
+                recentEvents: resolutionHistory ? resolutionHistory.slice(0, 5) : [],
+                autoResolutionEnabled: resolutionStats ? resolutionStats.enabled : false
+            },
+            fullSnapshot: this.currentSnapshot
         };
         
         this.snapshots.push(snapshot);
         
-        // Download snapshot
-        const blob = new Blob([JSON.stringify(snapshot, null, 2)], 
-            { type: 'application/json' });
+        // Download enhanced snapshot
+        const reportContent = this.generateDetailedReport(snapshot);
+        const blob = new Blob([reportContent], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `deadlock-snapshot-${Date.now()}.json`;
+        a.download = `deadlock-report-${Date.now()}.txt`;
         a.click();
         
         console.log(`✅ Snapshot captured (${this.snapshots.length} total)`);
         
-        alert(`✅ Snapshot captured!\n\nTotal snapshots: ${this.snapshots.length}\nDownloaded to your Downloads folder`);
+        alert(`✅ Comprehensive Report Generated!\n\n` +
+              `Total snapshots: ${this.snapshots.length}\n` +
+              `Report downloaded to your Downloads folder`);
+    }
+    
+    generateDetailedReport(snapshot) {
+        const hr = '='.repeat(80);
+        const hr2 = '-'.repeat(80);
+        
+        let report = `${hr}\n`;
+        report += `DEADLOCK DETECTION COMPREHENSIVE REPORT\n`;
+        report += `${hr}\n\n`;
+        
+        report += `Generated: ${snapshot.captureTime}\n`;
+        report += `Process: ${snapshot.processName} (PID: ${snapshot.processPid})\n\n`;
+        
+        report += `${hr2}\n`;
+        report += `DEADLOCK STATUS\n`;
+        report += `${hr2}\n`;
+        report += `Deadlock Detected: ${snapshot.deadlockState.detected ? 'YES ⚠️' : 'NO ✅'}\n`;
+        report += `Total Threads: ${snapshot.deadlockState.threadCount}\n`;
+        report += `Deadlocked Threads: ${snapshot.deadlockState.deadlockedThreads}\n`;
+        report += `Active Locks: ${snapshot.deadlockState.lockCount}\n\n`;
+        
+        if (snapshot.resolution && snapshot.resolution.stats) {
+            report += `${hr2}\n`;
+            report += `AUTO-RESOLUTION STATUS\n`;
+            report += `${hr2}\n`;
+            report += `Auto-Resolution: ${snapshot.resolution.autoResolutionEnabled ? 'ENABLED ✅' : 'DISABLED ❌'}\n`;
+            report += `Total Resolutions: ${snapshot.resolution.stats.totalResolutions || 0}\n`;
+            report += `Successful: ${snapshot.resolution.stats.successfulResolutions || 0}\n`;
+            report += `Failed: ${snapshot.resolution.stats.failedResolutions || 0}\n`;
+            report += `Average Time: ${snapshot.resolution.stats.averageResolutionTime || 0}ms\n\n`;
+        }
+        
+        if (snapshot.resolution && snapshot.resolution.recentEvents && snapshot.resolution.recentEvents.length > 0) {
+            report += `${hr2}\n`;
+            report += `RECENT RESOLUTION EVENTS\n`;
+            report += `${hr2}\n`;
+            snapshot.resolution.recentEvents.forEach((event, index) => {
+                report += `\nEvent #${index + 1}:\n`;
+                report += `  Time: ${new Date(event.timestamp).toLocaleString()}\n`;
+                report += `  Strategy: ${event.strategy || 'N/A'}\n`;
+                report += `  Status: ${event.status || 'N/A'}\n`;
+                report += `  Threads: ${event.threadIds ? event.threadIds.length : 0}\n`;
+                report += `  Duration: ${event.resolutionTime || 0}ms\n`;
+                if (event.steps && event.steps.length > 0) {
+                    report += `  Steps:\n`;
+                    event.steps.forEach(step => {
+                        report += `    - ${step}\n`;
+                    });
+                }
+            });
+            report += `\n`;
+        }
+        
+        if (snapshot.fullSnapshot.threads && snapshot.fullSnapshot.threads.length > 0) {
+            report += `${hr2}\n`;
+            report += `THREAD DETAILS\n`;
+            report += `${hr2}\n`;
+            snapshot.fullSnapshot.threads.forEach(thread => {
+                report += `\nThread ID: ${thread.id}\n`;
+                report += `  Name: ${thread.name}\n`;
+                report += `  State: ${thread.state}\n`;
+                report += `  Deadlocked: ${thread.isDeadlocked ? 'YES ⚠️' : 'NO'}\n`;
+            });
+            report += `\n`;
+        }
+        
+        report += `${hr}\n`;
+        report += `END OF REPORT\n`;
+        report += `${hr}\n`;
+        
+        return report;
+    }
+
+    async exportReport() {
+        console.log('📊 Exporting comprehensive report...');
+        
+        if (!this.currentSnapshot) {
+            alert('⚠️ No current data available to export.\n\nPlease wait for data to load or select a process to monitor.');
+            return;
+        }
+        
+        try {
+            // Fetch additional data for comprehensive report
+            let resolutionStats = null;
+            let resolutionHistory = null;
+            
+            try {
+                const statsResponse = await this.fetchWithTimeout('/api/resolution/stats');
+                resolutionStats = await statsResponse.json();
+                
+                const historyResponse = await this.fetchWithTimeout('/api/resolution/history');
+                resolutionHistory = await historyResponse.json();
+            } catch (error) {
+                console.warn('Could not fetch resolution data:', error);
+            }
+            
+            // Create comprehensive report data structure
+            const reportData = {
+                timestamp: new Date().toISOString(),
+                captureTime: new Date().toLocaleString(),
+                processName: this.selectedProcessName || 'Current Process',
+                processPid: this.selectedProcessPid || 'N/A',
+                deadlockState: {
+                    detected: this.currentSnapshot.deadlockDetected,
+                    threadCount: this.currentSnapshot.threads ? this.currentSnapshot.threads.length : 0,
+                    lockCount: this.currentSnapshot.locks ? this.currentSnapshot.locks.length : 0,
+                    deadlockedThreads: this.currentSnapshot.threads ? 
+                        this.currentSnapshot.threads.filter(t => t.isDeadlocked).length : 0
+                },
+                resolution: {
+                    stats: resolutionStats,
+                    recentEvents: resolutionHistory || [],
+                    autoResolutionEnabled: resolutionStats ? resolutionStats.enabled : false
+                },
+                fullSnapshot: this.currentSnapshot
+            };
+            
+            // Generate detailed text report
+            const reportContent = this.generateDetailedReport(reportData);
+            
+            // Create and download the report file
+            const blob = new Blob([reportContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `deadlock-report-${this.selectedProcessName || 'system'}-${Date.now()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            console.log('✅ Report exported successfully');
+            
+            this.showNotification('Report exported successfully!', 'success');
+            
+            // Show summary in alert
+            alert(`✅ Deadlock Report Exported Successfully!\n\n` +
+                  `Process: ${reportData.processName} (PID: ${reportData.processPid})\n` +
+                  `Timestamp: ${reportData.captureTime}\n\n` +
+                  `Report Contents:\n` +
+                  `- Deadlock Status: ${reportData.deadlockState.detected ? 'DETECTED ⚠️' : 'NONE ✅'}\n` +
+                  `- Thread Count: ${reportData.deadlockState.threadCount}\n` +
+                  `- Deadlocked Threads: ${reportData.deadlockState.deadlockedThreads}\n` +
+                  `- Lock Count: ${reportData.deadlockState.lockCount}\n\n` +
+                  `File saved to your Downloads folder.`);
+                  
+        } catch (error) {
+            console.error('❌ Failed to export report:', error);
+            this.showNotification(`Failed to export report: ${error.message}`, 'error');
+            alert(`❌ Failed to export report:\n\n${error.message}`);
+        }
     }
 
     showBeforeAfterComparison() {
@@ -706,46 +915,60 @@ class DeadlockDashboard {
         const before = this.snapshots[this.snapshots.length - 2];
         const after = this.snapshots[this.snapshots.length - 1];
         
-        const beforeThreads = before.threads && before.threads.length ? before.threads.length : 0;
-        const beforeLocks = before.locks && before.locks.length ? before.locks.length : 0;
-        const afterThreads = after.threads && after.threads.length ? after.threads.length : 0;
-        const afterLocks = after.locks && after.locks.length ? after.locks.length : 0;
+        // ✅ FIX: Access correct properties from snapshot structure
+        const beforeThreads = before.deadlockState ? before.deadlockState.threadCount : 0;
+        const beforeLocks = before.deadlockState ? before.deadlockState.lockCount : 0;
+        const beforeDeadlocked = before.deadlockState ? before.deadlockState.detected : false;
+        const beforeDeadlockedThreads = before.deadlockState ? before.deadlockState.deadlockedThreads : 0;
+        
+        const afterThreads = after.deadlockState ? after.deadlockState.threadCount : 0;
+        const afterLocks = after.deadlockState ? after.deadlockState.lockCount : 0;
+        const afterDeadlocked = after.deadlockState ? after.deadlockState.detected : false;
+        const afterDeadlockedThreads = after.deadlockState ? after.deadlockState.deadlockedThreads : 0;
         
         const comparison = {
             before: {
                 timestamp: before.timestamp,
+                captureTime: before.captureTime,
                 threads: beforeThreads,
                 locks: beforeLocks,
-                deadlocked: before.deadlockDetected
+                deadlocked: beforeDeadlocked,
+                deadlockedThreads: beforeDeadlockedThreads
             },
             after: {
                 timestamp: after.timestamp,
+                captureTime: after.captureTime,
                 threads: afterThreads,
                 locks: afterLocks,
-                deadlocked: after.deadlockDetected
+                deadlocked: afterDeadlocked,
+                deadlockedThreads: afterDeadlockedThreads
             },
             changes: {
                 threads: afterThreads - beforeThreads,
                 locks: afterLocks - beforeLocks,
-                deadlockCleared: before.deadlockDetected && !after.deadlockDetected
+                deadlockedThreads: afterDeadlockedThreads - beforeDeadlockedThreads,
+                deadlockCleared: beforeDeadlocked && !afterDeadlocked
             }
         };
         
         console.log('📊 Comparison:', comparison);
         
-        alert(`📊 Before/After Comparison\n\n` +
-              `BEFORE (${new Date(before.timestamp).toLocaleTimeString()}):\n` +
-              `  Threads: ${comparison.before.threads}\n` +
-              `  Locks: ${comparison.before.locks}\n` +
-              `  Deadlock: ${comparison.before.deadlocked ? 'YES' : 'NO'}\n\n` +
-              `AFTER (${new Date(after.timestamp).toLocaleTimeString()}):\n` +
-              `  Threads: ${comparison.after.threads}\n` +
-              `  Locks: ${comparison.after.locks}\n` +
-              `  Deadlock: ${comparison.after.deadlocked ? 'YES' : 'NO'}\n\n` +
+        alert(`📊 Before/After Analysis\n\n` +
+              `BEFORE (${before.captureTime}):\n` +
+              `  Total Threads: ${comparison.before.threads}\n` +
+              `  Deadlocked Threads: ${comparison.before.deadlockedThreads}\n` +
+              `  Active Locks: ${comparison.before.locks}\n` +
+              `  Deadlock Status: ${comparison.before.deadlocked ? 'YES ⚠️' : 'NO ✅'}\n\n` +
+              `AFTER (${after.captureTime}):\n` +
+              `  Total Threads: ${comparison.after.threads}\n` +
+              `  Deadlocked Threads: ${comparison.after.deadlockedThreads}\n` +
+              `  Active Locks: ${comparison.after.locks}\n` +
+              `  Deadlock Status: ${comparison.after.deadlocked ? 'YES ⚠️' : 'NO ✅'}\n\n` +
               `CHANGES:\n` +
               `  Threads: ${comparison.changes.threads >= 0 ? '+' : ''}${comparison.changes.threads}\n` +
+              `  Deadlocked Threads: ${comparison.changes.deadlockedThreads >= 0 ? '+' : ''}${comparison.changes.deadlockedThreads}\n` +
               `  Locks: ${comparison.changes.locks >= 0 ? '+' : ''}${comparison.changes.locks}\n` +
-              `  ${comparison.changes.deadlockCleared ? '✅ Deadlock CLEARED!' : '⚠️ Status unchanged'}`);
+              `  ${comparison.changes.deadlockCleared ? '✅ Deadlock CLEARED!' : comparison.changes.deadlockedThreads < 0 ? '✅ Improvement detected!' : '⚠️ Status unchanged'}`);
     }
 
     updateSystemInfo(data) {
@@ -862,18 +1085,6 @@ class DeadlockDashboard {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
-        notification.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            padding: 15px 25px;
-            background: ${type === 'success' ? '#48bb78' : type === 'error' ? '#f56565' : '#4299e1'};
-            color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 10000;
-            animation: slideIn 0.3s ease-out;
-        `;
         
         document.body.appendChild(notification);
         
@@ -1021,111 +1232,6 @@ class DeadlockDashboard {
                 </div>
             </div>
         `;
-        
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .resolution-panel {
-                position: fixed;
-                top: 70px;
-                right: 20px;
-                width: 400px;
-                max-height: 80vh;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-                z-index: 9999;
-                overflow: hidden;
-                display: none;
-            }
-            .resolution-panel-header {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                padding: 15px 20px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .resolution-panel-header h2 {
-                margin: 0;
-                font-size: 18px;
-            }
-            .close-btn {
-                background: rgba(255,255,255,0.2);
-                border: none;
-                color: white;
-                font-size: 24px;
-                width: 30px;
-                height: 30px;
-                border-radius: 50%;
-                cursor: pointer;
-                line-height: 1;
-            }
-            .close-btn:hover {
-                background: rgba(255,255,255,0.3);
-            }
-            .resolution-panel-body {
-                padding: 20px;
-                max-height: calc(80vh - 70px);
-                overflow-y: auto;
-            }
-            .resolution-stats {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 15px;
-                margin-bottom: 20px;
-            }
-            .stat-card {
-                background: #f7fafc;
-                padding: 15px;
-                border-radius: 8px;
-                text-align: center;
-            }
-            .stat-label {
-                font-size: 12px;
-                color: #718096;
-                margin-bottom: 5px;
-            }
-            .stat-value {
-                font-size: 24px;
-                font-weight: bold;
-                color: #2d3748;
-            }
-            .resolution-history h3 {
-                margin-top: 0;
-                margin-bottom: 15px;
-                font-size: 16px;
-            }
-            .history-list {
-                max-height: 300px;
-                overflow-y: auto;
-            }
-            .history-item {
-                background: #f7fafc;
-                padding: 12px;
-                border-radius: 6px;
-                margin-bottom: 10px;
-                border-left: 4px solid #48bb78;
-            }
-            .history-item.failed {
-                border-left-color: #f56565;
-            }
-            .history-time {
-                font-size: 11px;
-                color: #718096;
-            }
-            .history-method {
-                font-weight: bold;
-                color: #2d3748;
-                margin-top: 5px;
-            }
-            .history-details {
-                font-size: 12px;
-                color: #4a5568;
-                margin-top: 5px;
-            }
-        `;
-        document.head.appendChild(style);
         
         return panel;
     }

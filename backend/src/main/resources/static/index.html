@@ -174,6 +174,37 @@
                 </div>
             </div>
 
+            <!-- Metrics Chart Panel -->
+            <div class="panel metrics-chart-panel">
+                <div class="panel-header">
+                    <h2>Performance Metrics</h2>
+                    <span class="panel-subtitle">Real-time monitoring charts</span>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-container">
+                        <canvas id="metricsChart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #4F46E5;"></span>
+                            <span class="legend-label">Total Threads</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #059669;"></span>
+                            <span class="legend-label">Active Locks</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #DC2626;"></span>
+                            <span class="legend-label">Deadlocked Threads</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #D97706;"></span>
+                            <span class="legend-label">Blocked Threads</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Control Actions -->
             <div class="panel actions-panel">
                 <div class="panel-header">
@@ -309,17 +340,6 @@
 
                     <!-- Cytoscape Graph Container -->
                     <div id="cy" class="graph-canvas"></div>
-
-                    <!-- Empty State -->
-                    <div id="empty-state" class="empty-state">
-                        <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
-                            <circle cx="60" cy="60" r="50" stroke="#E5E7EB" stroke-width="4"/>
-                            <path d="M60 30V60L75 75" stroke="#9CA3AF" stroke-width="4"/>
-                        </svg>
-                        <h3>No Thread Data Available</h3>
-                        <p>Waiting for application data to display thread relationships and dependencies</p>
-                        <button class="btn-refresh-empty" id="refresh-empty">Refresh Now</button>
-                    </div>
                 </div>
             </div>
 

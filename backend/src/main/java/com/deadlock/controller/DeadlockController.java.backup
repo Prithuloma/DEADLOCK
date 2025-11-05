@@ -85,4 +85,60 @@ public class DeadlockController {
             "timestamp", String.valueOf(System.currentTimeMillis())
         ));
     }
+    
+    /**
+     * 🚀 NEW: GET /api/resolution/history - Get resolution history
+     */
+    @GetMapping("/resolution/history")
+    public ResponseEntity<Map<String, Object>> getResolutionHistory() {
+        try {
+            Map<String, Object> history = deadlockService.getResolutionHistory();
+            return ResponseEntity.ok(history);
+        } catch (Exception e) {
+            System.err.println("❌ Error getting resolution history: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * 🚀 NEW: GET /api/resolution/stats - Get resolution statistics
+     */
+    @GetMapping("/resolution/stats")
+    public ResponseEntity<Map<String, Object>> getResolutionStats() {
+        try {
+            Map<String, Object> stats = deadlockService.getResolutionStatistics();
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            System.err.println("❌ Error getting resolution stats: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * 🚀 NEW: POST /api/resolution/toggle - Toggle auto-resolution on/off
+     */
+    @PostMapping("/resolution/toggle")
+    public ResponseEntity<Map<String, Object>> toggleAutoResolution() {
+        try {
+            Map<String, Object> result = deadlockService.toggleAutoResolution();
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("❌ Error toggling auto-resolution: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * 🚀 NEW: POST /api/resolution/trigger - Manually trigger resolution for current deadlocks
+     */
+    @PostMapping("/resolution/trigger")
+    public ResponseEntity<Map<String, Object>> triggerManualResolution() {
+        try {
+            Map<String, Object> result = deadlockService.triggerManualResolution();
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("❌ Error triggering manual resolution: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }
