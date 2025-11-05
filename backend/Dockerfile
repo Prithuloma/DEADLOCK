@@ -1,6 +1,18 @@
 FROM eclipse-temurin:17-jdk-jammy
+
 WORKDIR /app
-COPY target/deadlock-detector-1.0.0.jar app.jar
+
+# Copy Maven files first
+COPY pom.xml .
+COPY src ./src
+
+# Build the JAR inside the container
+RUN ./mvnw clean package -DskipTests
+
+# Copy the built JAR to the container
+COPY target/*.jar app.jar
+
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","app.jar"]
+
 
