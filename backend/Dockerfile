@@ -1,19 +1,24 @@
-FROM eclipse-temurin:17-jdk-jammy
+# Use Java 21 instead of 17
+FROM eclipse-temurin:21-jdk-jammy
 
 WORKDIR /app
 
-# Copy project files
-COPY . .
+# Copy the pom.xml and download dependencies
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-# Install Maven
-RUN apt-get update && apt-get install -y maven
+# Copy the source code
+COPY src ./src
 
-# Build the JAR
+# Build the application JAR
 RUN mvn clean package -DskipTests
 
-# Expose port and run the app
+# Expose the port
 EXPOSE 8080
+
+# Run the built app
 ENTRYPOINT ["java", "-jar", "target/deadlock-detector-1.0.0.jar"]
+
 
 
 
