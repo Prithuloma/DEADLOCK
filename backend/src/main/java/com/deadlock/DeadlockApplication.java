@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * This application provides REST APIs and WebSocket endpoints for 
  * real-time deadlock monitoring and visualization.
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.deadlock")
 @EnableScheduling
 public class DeadlockApplication {
 
